@@ -1,13 +1,12 @@
 ---
 layout: post
 title:  "Full text search in Odoo Ecommerce Website"
-date:   2020-02-29 00:16:33 +0700
+date:   2020-03-09 00:16:33 +0700
 categories: odoo, search, performance, postgresql
 ---
 
 Helping customers find the right products quickly is crucial to running a successful ecommerce website. Therefore, product searching deserves attention to its performance. Odoo, a batteries included solution to managing enterpries, comes with its own off-the-shelf search functionality. It works out of the box with reasonable speed for small inventory. For larger product collection, it leaves something to be desired. In this post, we are looking at how Odoo is implementing its search function and possible methods to speed it up. 
 
-INSERT SCREENSHOT OF PRODUCT SEARCH HERE.
 
 ### 1. How odoo is doing search currently
 
@@ -25,7 +24,6 @@ Running the same query through Postgres query planner, surprisingly, a sequentia
 
 ![Sequential scan is required to search for products](/content/images/seq_scan_search.png)
 
-INSERT SCREEN SHOT OF EXISTING INDEX
 
 Turns out, the current index is of BTree type, which is only made use of if the search operator `like` and query is matched at the beginning of the text. This is understandable, given how BTree is implemented. A record would be added to BTree index by comparing it lexicographically with existing nodes. Lexicographic order starts from the beginning. A little modification to the above query would allow Postgres to use the existing index:
 
@@ -39,22 +37,17 @@ Though using BTree index significantly improves search time, only matching queri
 
 ### 2. Speed up using index
 
-PosgresSQL comes with different types of indices out of the box. The default index created by `CREATE INDEX` is BTree. In order to overcome the limitation of BTree, which only matches at start of the string, we will try to create index of GIN or GIST type. 
+Though BTree does not work for our need, PostgreSQL comes with other types of indices out of the box. Among them is GIN (generalized inverted index), which, as its name implies, provides inverted index for full-text search. By default, GIN tokenizes word by whitespaces, thus allows only queries that match exact words. With the help of `pg_trgm` trigram extension, we can solve the problem of partial text match. This [blog post](https://hashrocket.com/blog/posts/exploring-postgres-gin-index) is pretty helpful in explaining Postgres GIN index.
 
-Let first try with GIN
+```sql
+create extension if not exists pg_trgm;
+create index name_search_index on product_template using gin (name gin_trgm_ops)
+```
 
-THEN GIST
+If you don't want to get your hands dirty, we have already pre-packaged a [full-text search module](https://apps.odoo.com/apps/modules/13.0/website_sale_fulltext_search/) for product search in Odoo. Feel free to try it and let us know if you have any suggestions. 
 
-### 3. Full-text search.
 
-Bes
 
-Show query planner here 
-What is full text search. 
-
-How does it help 
-
-Performance comparison
 
 
 
